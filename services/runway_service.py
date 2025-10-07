@@ -22,11 +22,98 @@ except Exception as e:
     print(f"❌ Failed to initialize RunwayML client: {e}")
     raise
 
+
 def generate_video(prompt: str, duration: int, resolution: str) -> str | None:
     """
     Generate video using RunwayML SDK
     """
     return generate_video_with_polling(prompt, duration, resolution)
+
+def generate_video_from_image(image_path: str, prompt: str, duration: int, resolution: str) -> str | None:
+    """
+    Generate video from an input image using RunwayML SDK
+    """
+    # Clean and validate prompt
+    clean_prompt = prompt.replace("Enhanced Prompt:", "").strip()
+    if len(clean_prompt) > 1000:
+        clean_prompt = clean_prompt[:1000]
+        print(f"⚠️ Prompt truncated to 1000 characters")
+
+    resolution_map = {
+        "720p": "1280:720",
+        "1080p": "1920:1080",
+        "480p": "854:480",
+        "portrait":"720:1280",
+        "square":"960:960",
+        "wide":"1584:672"
+    }
+    ratio = resolution_map.get(resolution, "1280:720")
+    supported_ratios = ["1280:720", "720:1280", "1104:832", "832:1104", "960:960", "1584:672"]
+    if ratio not in supported_ratios:
+        print(f"⚠️ Unsupported resolution '{resolution}' → using default '1280:720'")
+        ratio = "1280:720"
+
+    veo3_duration = 8
+    if duration != 8:
+        print(f"⚠️ Veo3 requires exactly 8 seconds. Using 8s instead of {duration}s")
+
+    try:
+        print("🔧 Starting Veo3 image-to-video generation via SDK...")
+        print(f"📝 Prompt: {clean_prompt}")
+        print(f"📝 Length: {len(clean_prompt)}/1000 characters")
+        print(f"⏱️ Duration: {veo3_duration}s")
+        print(f"📺 Resolution: {resolution} (ratio: {ratio})")
+        print(f"🎯 Model: Veo3")
+        print(f"🖼️ Image path: {image_path}")
+
+
+        # Pass local image path as 'prompt_image' argument
+        task = client.image_to_video.create(
+            prompt_image=image_path,
+            prompt_text=clean_prompt,
+            model="veo3",
+            ratio=ratio,
+            duration=veo3_duration,
+        )
+
+        task_id = task.id
+        print(f"🆔 Task ID: {task_id}")
+
+        # Poll until finished (reuse polling logic)
+        max_retries = 300
+        retries = 0
+        last_status = ""
+        while retries < max_retries:
+            current_task = client.tasks.retrieve(task_id)
+            task_status = getattr(current_task, 'status', 'UNKNOWN')
+            if task_status != last_status:
+                print(f"[{retries}] Status: {task_status}")
+                last_status = task_status
+            if task_status == "SUCCEEDED":
+                print("✅ Image-to-video generation succeeded!")
+                video_url = extract_video_url_from_task_fixed(current_task)
+                if video_url:
+                    print(f"🎬 Video URL: {video_url}")
+                    return video_url
+                else:
+                    print("❌ Task succeeded but no video URL found")
+                    return None
+            if task_status == "FAILED":
+                error_msg = getattr(current_task, 'error', 'Unknown error')
+                print(f"❌ Runway task failed: {error_msg}")
+                return None
+            if task_status == "THROTTLED":
+                if retries % 10 == 0:
+                    print(f"⏳ Still in queue... ({retries * 5} seconds waited)")
+                time.sleep(10)
+            else:
+                time.sleep(5)
+            retries += 1
+        print("⏳ Runway task timed out after waiting 25 minutes.")
+        return None
+    except Exception as e:
+        print(f"❌ Error in image-to-video generation: {e}")
+        return None
 
 def generate_video_with_polling(prompt: str, duration: int, resolution: str) -> str | None:
     """
@@ -44,9 +131,18 @@ def generate_video_with_polling(prompt: str, duration: int, resolution: str) -> 
     resolution_map = {
         "720p": "1280:720",
         "1080p": "1920:1080",
-        "480p": "854:480"
+        "480p": "854:480",
+        "portrait":"720:1280",
+        "square":"960:960",
+        "wide":"1584:672"
     }
     ratio = resolution_map.get(resolution, "1280:720")
+
+    # Validate against supported options
+    supported_ratios = ["1280:720", "720:1280", "1104:832", "832:1104", "960:960", "1584:672"]
+    if ratio not in supported_ratios:
+        print(f"⚠️ Unsupported resolution '{resolution}' → using default '1280:720'")
+        ratio = "1280:720"
     
     # Veo3 requires exactly 8 seconds
     veo3_duration = 8
