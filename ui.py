@@ -8,7 +8,6 @@ st.set_page_config(page_title="🎬 AI Video Generator", layout="wide")
 st.title("🎬 AI Video Generation Agent (Veo3 - Development)")
 st.markdown("""
 Create high-quality videos using **RunwayML's Veo3** model.  
-This Streamlit app connects directly to your **FastAPI backend** for automated video generation.
 """)
 
 # ==========================
@@ -23,7 +22,7 @@ API_URL = "http://127.0.0.1:8000"  # local backend (FastAPI)
 # ==========================
 # Tabs for Text-to-Video and Image-to-Video
 # ==========================
-tab1, tab2 = st.tabs(["Text-to-Video", "Image-to-Video"])
+tab1, tab2, tab3 = st.tabs(["Text-to-Video", "Image-to-Video", "Text-to-Image"])
 
 with tab1:
     st.subheader("🧠 Enter Your Prompt")
@@ -110,6 +109,48 @@ with tab2:
                         st.code(result.get("enhanced_prompt", ""), language="markdown")
                         st.markdown("### 🎬 Generated Video")
                         st.video(result["video_url"])
+                    else:
+                        st.error(f"❌ Failed: {response.text}")
+                except Exception as e:
+                    st.error(f"⚠️ Error: {e}")
+
+with tab3:
+    st.subheader("📝 Enter Your Prompt")
+    prompt_text = st.text_area("Enter the topic or idea for your image:")
+    col5, col6 = st.columns(2)
+    with col5:
+        style_text = st.selectbox(
+            "🎨 Choose a style",
+            ["cinematic", "realistic", "vibrant", "moody", "dramatic", "anime"],
+            index=0,
+            key="text_style"
+        )
+    with col6:
+        resolution_text = st.selectbox(
+            "📺 Select resolution",
+            ["720p", "1080p", "480p"],
+            index=1,
+            key="text_resolution"
+        )
+    if st.button("🚀 Generate Image", key="text2image"):
+        if not prompt_text.strip():
+            st.warning("⚠️ Please enter a valid prompt!")
+        else:
+            with st.spinner("⏳ Generating image... this may take a few minutes."):
+                try:
+                    payload = {
+                        "prompt": prompt_text,
+                        "style": style_text,
+                        "resolution": resolution_text
+                    }
+                    response = requests.post(f"{API_URL}/generate-image", json=payload)
+                    if response.status_code == 200:
+                        data = response.json()
+                        st.success("✅ Image generated successfully!")
+                        st.markdown("### ✨ Enhanced Prompt")
+                        st.code(data["enhanced_prompt"], language="markdown")
+                        st.markdown("### 🖼️ Generated Image")
+                        st.image(data["image_url"], caption="Generated Image")
                     else:
                         st.error(f"❌ Failed: {response.text}")
                 except Exception as e:

@@ -14,8 +14,7 @@ print("OpenAI client initialized successfully!")
 
 def enhance_prompt(prompt: str, style: str) -> str:
     """
-    Enhances a user prompt with cinematic details for Veo3 video generation.
-    Veo3 requires prompts under 1000 characters.
+   Enhances user prompts with cinematic and visually engaging details optimized for Veo3 video generation. Tailored for TikTok and Instagram branding videos, this function adds camera angles, lighting, and stylistic elements while keeping prompts concise and under 800 characters for maximum clarity and impact.
     """
     # Simple enhancement fallback (no API call needed)
     def simple_enhancement(prompt: str, style: str) -> str:
@@ -41,10 +40,7 @@ def enhance_prompt(prompt: str, style: str) -> str:
 
     try:
         system_message = (
-            "You are an expert in generating prompts for Veo3 video generation AI. "
-            "Enhance prompts to include cinematic details, camera angles, lighting, and style. "
-            "CRITICAL: Keep the enhanced prompt under 400 characters to allow for Veo3's 1000 character limit. "
-            "Be concise and pin to point. Focus on visual elements that can be represented in video."
+            "You are an expert in crafting Veo3 prompts for short-form branding videos on TikTok and Instagram. Enhance each prompt with cinematic visuals, camera movements, lighting, and style. Keep it under 400 characters—focus on eye-catching, dynamic, and visually engaging scenes ideal for social media."
         )
         
         user_message = f"Original prompt: '{prompt}' | Style: {style}. Keep response under 400 characters."

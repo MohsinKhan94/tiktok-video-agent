@@ -4,7 +4,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from services.llm_service import enhance_prompt, create_basic_prompt
-from services.runway_service import generate_video, generate_video_from_image
+from services.runway_service import generate_video, generate_video_from_image, generate_image
 import requests
 from fastapi import UploadFile, File, Form
 from dotenv import load_dotenv
@@ -44,8 +44,12 @@ app.add_middleware(
 # Request Model
 # ===============================
 
-
 class VideoRequest(BaseModel):
+    prompt: str
+    style: str
+    resolution: str
+
+class ImageRequest(BaseModel):
     prompt: str
     style: str
     resolution: str
@@ -56,11 +60,6 @@ class ImageVideoRequest(BaseModel):
     style: str
     resolution: str
 
-    class ImageVideoRequest(BaseModel):
-        image_path: str  # Local path to image file
-        prompt: str
-        style: str
-        resolution: str
 # ===============================
 # Routes
 # ===============================
@@ -68,7 +67,6 @@ class ImageVideoRequest(BaseModel):
 def home():
     logger.info("🏠 Root endpoint accessed")
     return {"message": "AI Video Generation Agent API is running!"}
-
 
 
 @app.post("/generate-video")
@@ -110,6 +108,44 @@ def generate_video_api(request: VideoRequest):
         logger.exception("💥 Exception occurred during video generation")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/generate-image")
+def generate_image_api(request: ImageRequest):
+    """
+    Endpoint that enhances a prompt and generates an image.
+    """
+    logger.info(f"🖼️ Received image generation request: prompt='{request.prompt}', style='{request.style}', resolution='{request.resolution}'")
+    prompt = request.prompt.strip()
+    if not prompt:
+        logger.warning("⚠️ Empty prompt received")
+        raise HTTPException(status_code=400, detail="Prompt cannot be empty")
+    if not os.getenv("RUNWAY_API_KEY"):
+        logger.error("❌ Runway API key missing")
+        raise HTTPException(
+            status_code=500,
+            detail="Runway API key missing. Please set RUNWAY_API_KEY in your .env file.",
+        )
+    try:
+        logger.info("🧠 Enhancing prompt...")
+        enhanced_prompt = enhance_prompt(prompt, request.style)
+        logger.info(f"✅ Enhanced prompt: {enhanced_prompt}")
+    except Exception as e:
+        logger.error(f"❌ Prompt enhancement failed: {e}")
+        enhanced_prompt = create_basic_prompt(prompt, request.style)
+    try:
+        logger.info("🚀 Generating image using RunwayML...")
+        image_url = generate_image(enhanced_prompt, request.resolution)
+        if not image_url:
+            logger.error("❌ Image generation failed on RunwayML.")
+            raise HTTPException(status_code=500, detail="Image generation failed on RunwayML.")
+        logger.info(f"✅ Image generated successfully: {image_url}")
+        return {
+            "status": "success",
+            "image_url": image_url,
+            "enhanced_prompt": enhanced_prompt,
+        }
+    except Exception as e:
+        logger.exception("💥 Exception occurred during image generation")
+        raise HTTPException(status_code=500, detail=str(e))
 
 # ===============================
 # Image-to-Video Endpoint

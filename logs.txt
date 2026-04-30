@@ -1,0 +1,11 @@
+!” 🚀 #TravelTech #MoodBasedTravel
+📝 Length: 509/1000 characters
+📺 Resolution: 480p (ratio: 1280:720)
+❌ Error in image generation: TextToImageResource.create() missing 1 required keyword-only argument: 'model'
+2025-11-03 16:55:53,768 [ERROR] ❌ Image generation failed on RunwayML.
+2025-11-03 16:55:53,768 [ERROR] 💥 Exception occurred during image generation
+Traceback (most recent call last):
+  File "C:\Users\useerr\Desktop\VideoGenAgent\main.py", line 139, in generate_image_api
+    raise HTTPException(status_code=500, detail="Image generation failed on RunwayML.")
+fastapi.exceptions.HTTPException: 500: Image generation failed on RunwayML.
+INFO:     127.0.0.1:55452 - "POST /generate-image HTTP/1.1" 500 Internal Server Error
